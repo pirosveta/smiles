@@ -32,14 +32,13 @@ public class Transformer {
             }
         }
 
-        lastEdge = null;
         queue.add(minVertex);
-        findCycles();
+        findCycles(null);
 
         lastEdge = null;
         queue.add(minVertex);
         StringBuilder sb = new StringBuilder();
-        formSmiles(sb, 1);
+        formSmiles(null, sb, 1);
 
         return sb.toString();
     }
@@ -51,7 +50,7 @@ public class Transformer {
         int prevUniquePrints = uniquePrints;
         int verticesSize = graph.getVertices().size();
 
-        while (uniquePrints != verticesSize && iterationCounter < 20) {
+        while (uniquePrints != verticesSize && iterationCounter < 10) {
             iterationCounter++;
             nextMorganStep();
 
@@ -110,130 +109,152 @@ public class Transformer {
         }
     }
 
-    private void findCycles() {
+    private void findCycles(Vertex prevVertex) {
         Vertex currentVertex = queue.get(0);
         currentVertex.incPassed();
 
         for (Edge edge : currentVertex.getEdges()) {
-            if (!edge.equals(lastEdge)) {
-                lastEdge = edge;
-
-                if (!edge.getFirstVertex().equals(currentVertex)) {
-                    if (edge.getFirstVertex().isPassed()) {
-                        int passedVertexIndex = queue.indexOf(edge.getFirstVertex());
-                        for (int i = 0; i <= passedVertexIndex; i++) {
-                            queue.get(i).setInCycle(true);
-                        }
-                        continue;
+            if (!edge.getFirstVertex().equals(currentVertex) && !edge.getFirstVertex().equals(prevVertex)) {
+                if (edge.getFirstVertex().isPassed()) {
+                    int passedVertexIndex = queue.indexOf(edge.getFirstVertex());
+                    for (int i = 0; i <= passedVertexIndex; i++) {
+                        queue.get(i).setInCycle(true);
                     }
-                    queue.add(0, edge.getFirstVertex());
-                } else {
-                    if (edge.getSecondVertex().isPassed()) {
-                        int passedVertexIndex = queue.indexOf(edge.getSecondVertex());
-                        for (int i = 0; i <= passedVertexIndex; i++) {
-                            queue.get(i).setInCycle(true);
-                        }
-                        continue;
-                    }
-                    queue.add(0, edge.getSecondVertex());
+                    continue;
                 }
 
-                findCycles();
+                queue.add(0, edge.getFirstVertex());
+                findCycles(currentVertex);
+            } else if (!edge.getSecondVertex().equals(currentVertex) && !edge.getSecondVertex().equals(prevVertex)) {
+                if (edge.getSecondVertex().isPassed()) {
+                    int passedVertexIndex = queue.indexOf(edge.getSecondVertex());
+                    for (int i = 0; i <= passedVertexIndex; i++) {
+                        queue.get(i).setInCycle(true);
+                    }
+                    continue;
+                }
+
+                queue.add(0, edge.getSecondVertex());
+                findCycles(currentVertex);
             }
+
         }
 
         queue.remove(0);
     }
 
-    private void formSmiles(StringBuilder sb, int orderCounter) {
+    private void formSmiles(Vertex prevVertex, StringBuilder sb, int orderCounter) {
         Vertex currentVertex = queue.get(0);
         currentVertex.setOrder(orderCounter++);
 
-        if (lastEdge != null && lastEdge.getNumber() == 2) {
+        if (prevVertex != null && lastEdge.getNumber() == 2) {
             sb.append("=");
         }
         sb.append(currentVertex.getName());
 
         if (currentVertex.isInCycle()) {
             int cycleVariants = 0;
-            TreeMap<Long, Map.Entry<Vertex, Edge>> vertices = new TreeMap<>();
+            List<Map.Entry<Vertex, Edge>> vertices = new ArrayList<>();
 
             for (Edge edge : currentVertex.getEdges()) {
-                if (!edge.equals(lastEdge)) {
-                    Vertex firstVertex = edge.getFirstVertex();
-                    Vertex secondVertex = edge.getSecondVertex();
+                Vertex firstVertex = edge.getFirstVertex();
+                Vertex secondVertex = edge.getSecondVertex();
 
-                    if (!firstVertex.equals(currentVertex)) {
-                        if (firstVertex.isInCycle()) {
-                            cycleVariants++;
-                        }
-                        vertices.put(firstVertex.getPrintNumber(), Map.entry(firstVertex, edge));
-                    } else {
-                        if (secondVertex.isInCycle()) {
-                            cycleVariants++;
-                        }
-                        vertices.put(secondVertex.getPrintNumber(), Map.entry(secondVertex, edge));
+                if (!firstVertex.equals(currentVertex) && !firstVertex.equals(prevVertex)) {
+                    if (firstVertex.isInCycle()) {
+                        cycleVariants++;
                     }
+                    vertices.add(Map.entry(firstVertex, edge));
+                } else if (!secondVertex.equals(currentVertex) && !secondVertex.equals(prevVertex)) {
+                    if (secondVertex.isInCycle()) {
+                        cycleVariants++;
+                    }
+                    vertices.add(Map.entry(secondVertex, edge));
                 }
             }
 
-            if (cycleVariants > 1) {
+            vertices.sort(Comparator.comparingLong(o -> o.getKey().getPrintNumber()));
+
+            if (cycleVariants > 1 && currentVertex.getName().length() == 1) {
                 sb.append(lastCycleNumber);
 
-                vertices.lastEntry().getValue().getKey().setName(
-                        vertices.lastEntry().getValue().getKey().getName() + lastCycleNumber
+                vertices.get(1).getKey().setName(
+                        vertices.get(1).getKey().getName() + lastCycleNumber
                 );
 
                 lastCycleNumber++;
 
-                lastEdge = vertices.firstEntry().getValue().getValue();
-                queue.add(0, vertices.firstEntry().getValue().getKey());
-                formSmiles(sb, orderCounter);
+                lastEdge = vertices.get(0).getValue();
+                queue.add(0, vertices.get(0).getKey());
+                formSmiles(currentVertex, sb, orderCounter);
             } else {
                 if (vertices.size() > 1) {
 
-                    if (vertices.firstEntry().getValue().getKey().getOrder() != 0) {
-                        lastEdge = vertices.lastEntry().getValue().getValue();
-                        queue.add(0, vertices.lastEntry().getValue().getKey());
+                    if (vertices.get(0).getKey().getOrder() != 0) {
+                        lastEdge = vertices.get(vertices.size() - 1).getValue();
+                        queue.add(0, vertices.get(vertices.size() - 1).getKey());
+                    } else if (vertices.get(vertices.size() - 1).getKey().getOrder() != 0){
+                        lastEdge = vertices.get(0).getValue();
+                        queue.add(0, vertices.get(0).getKey());
                     } else {
-                        lastEdge = vertices.firstEntry().getValue().getValue();
-                        queue.add(0, vertices.firstEntry().getValue().getKey());
+                        // ветвим не цикл
+                        if (!vertices.get(0).getKey().isInCycle()) {
+                            sb.append("(");
+                            lastEdge = vertices.get(0).getValue();
+                            queue.add(0, vertices.get(0).getKey());
+                            formSmiles(currentVertex, sb, orderCounter);
+                            sb.append(")");
+
+                            lastEdge = vertices.get(vertices.size() - 1).getValue();
+                            queue.add(0, vertices.get(vertices.size() - 1).getKey());
+                        } else {
+                            sb.append("(");
+                            lastEdge = vertices.get(vertices.size() - 1).getValue();
+                            queue.add(0, vertices.get(vertices.size() - 1).getKey());
+                            formSmiles(currentVertex, sb, orderCounter);
+                            sb.append(")");
+
+                            lastEdge = vertices.get(0).getValue();
+                            queue.add(0, vertices.get(0).getKey());
+                        }
                     }
-                } else {
-                    lastEdge = vertices.lastEntry().getValue().getValue();
-                    queue.add(0, vertices.lastEntry().getValue().getKey());
+
+                    formSmiles(currentVertex, sb, orderCounter);
+                } else if (vertices.get(0).getKey().getOrder() == 0) {
+                    lastEdge = vertices.get(vertices.size() - 1).getValue();
+                    queue.add(0, vertices.get(vertices.size() - 1).getKey());
+                    formSmiles(currentVertex, sb, orderCounter);
                 }
-                formSmiles(sb, orderCounter);
             }
         } else {
-            TreeMap<Long, Map.Entry<Vertex, Edge>> vertices = new TreeMap<>();
+            List<Map.Entry<Vertex, Edge>> vertices = new ArrayList<>();
 
             for (Edge edge : currentVertex.getEdges()) {
-                if (!edge.equals(lastEdge)) {
-                    Vertex firstVertex = edge.getFirstVertex();
-                    Vertex secondVertex = edge.getSecondVertex();
+                Vertex firstVertex = edge.getFirstVertex();
+                Vertex secondVertex = edge.getSecondVertex();
 
-                    if (!firstVertex.equals(currentVertex)) {
-                        vertices.put(firstVertex.getPrintNumber(), Map.entry(firstVertex, edge));
-                    } else {
-                        vertices.put(secondVertex.getPrintNumber(), Map.entry(secondVertex, edge));
-                    }
+                if (!edge.getFirstVertex().equals(currentVertex) && !edge.getFirstVertex().equals(prevVertex)) {
+                    vertices.add(Map.entry(firstVertex, edge));
+                } else if (!edge.getSecondVertex().equals(currentVertex) && !edge.getSecondVertex().equals(prevVertex)) {
+                    vertices.add(Map.entry(secondVertex, edge));
                 }
             }
+
+            vertices.sort(Comparator.comparingLong(o -> o.getKey().getPrintNumber()));
 
             if (!vertices.isEmpty()) {
 
                 if (vertices.size() > 1) {
                     sb.append("(");
-                    lastEdge = vertices.firstEntry().getValue().getValue();
-                    queue.add(0, vertices.firstEntry().getValue().getKey());
-                    formSmiles(sb, orderCounter);
+                    lastEdge = vertices.get(0).getValue();
+                    queue.add(0, vertices.get(0).getKey());
+                    formSmiles(currentVertex, sb, orderCounter);
                     sb.append(")");
                 }
 
-                lastEdge = vertices.lastEntry().getValue().getValue();
-                queue.add(0, vertices.lastEntry().getValue().getKey());
-                formSmiles(sb, orderCounter);
+                lastEdge = vertices.get(vertices.size() - 1).getValue();
+                queue.add(0, vertices.get(vertices.size() - 1).getKey());
+                formSmiles(currentVertex, sb, orderCounter);
             }
         }
 
