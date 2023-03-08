@@ -7,8 +7,8 @@ import ru.bmstu.labs.parsing.Mol2GraphParser;
 public class Main {
 
     public static void main(String[] args) {
-//        getSmiles("folate");
-//        getSmiles("adrenaline");
+        getSmiles("folate");
+        getSmiles("adrenaline");
         getSmiles("cocaine");
     }
 
