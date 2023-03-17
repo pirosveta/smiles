@@ -204,13 +204,10 @@ public class Transformer {
 
             if (cycleVariants > 1 && currentVertex.getName().length() == 1
                     && vertices.get(0).getKey().getCycleNumber() == vertices.get(vertices.size() - 1).getKey().getCycleNumber()) {
-
-                if (vertices.get(1).getKey().getName().length() == 1) {
-                    sb.append(lastCycleNumber);
-                    vertices.get(1).getKey().setName(
-                            vertices.get(1).getKey().getName() + lastCycleNumber
-                    );
-                }
+                sb.append(lastCycleNumber);
+                vertices.get(1).getKey().setName(
+                        vertices.get(1).getKey().getName() + lastCycleNumber
+                );
 
                 lastCycleNumber++;
 
