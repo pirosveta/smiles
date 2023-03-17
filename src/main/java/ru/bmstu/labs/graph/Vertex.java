@@ -10,14 +10,14 @@ public class Vertex extends Print {
     private String name;
     private int order;
     private int passed;
-    private boolean inCycle;
+    private int cycleNumber;
 
     public Vertex(String name) {
         this.edges = new ArrayList<>();
         this.name = name;
         this.order = 0;
         this.passed = 0;
-        this.inCycle = false;
+        this.cycleNumber = 0;
     }
 
     public String getName() {
@@ -53,11 +53,15 @@ public class Vertex extends Print {
     }
 
     public boolean isInCycle() {
-        return inCycle;
+        return cycleNumber > 0;
     }
 
-    public void setInCycle(boolean inCycle) {
-        this.inCycle = inCycle;
+    public void setCycleNumber(int cycleNumber) {
+        this.cycleNumber = cycleNumber;
+    }
+
+    public int getCycleNumber() {
+        return cycleNumber;
     }
 
     @Override
