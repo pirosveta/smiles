@@ -32,10 +32,12 @@ public class Transformer {
             }
         }
 
+        lastCycleNumber = 1;
         queue.add(minVertex);
         findCycles(null);
 
         lastEdge = null;
+        lastCycleNumber = 1;
         queue.add(minVertex);
         StringBuilder sb = new StringBuilder();
         formSmiles(null, sb, 1);
@@ -117,9 +119,20 @@ public class Transformer {
             if (!edge.getFirstVertex().equals(currentVertex) && !edge.getFirstVertex().equals(prevVertex)) {
                 if (edge.getFirstVertex().isPassed()) {
                     int passedVertexIndex = queue.indexOf(edge.getFirstVertex());
+                    int curCycleNumber = lastCycleNumber;
+
                     for (int i = 0; i <= passedVertexIndex; i++) {
-                        queue.get(i).setInCycle(true);
+                        if (queue.get(i).getCycleNumber() != 0) {
+                            curCycleNumber = queue.get(i).getCycleNumber();
+                            break;
+                        }
                     }
+
+                    for (int i = 0; i <= passedVertexIndex; i++) {
+                        queue.get(i).setCycleNumber(curCycleNumber);
+                    }
+
+                    lastCycleNumber++;
                     continue;
                 }
 
@@ -128,9 +141,20 @@ public class Transformer {
             } else if (!edge.getSecondVertex().equals(currentVertex) && !edge.getSecondVertex().equals(prevVertex)) {
                 if (edge.getSecondVertex().isPassed()) {
                     int passedVertexIndex = queue.indexOf(edge.getSecondVertex());
+                    int curCycleNumber = lastCycleNumber;
+
                     for (int i = 0; i <= passedVertexIndex; i++) {
-                        queue.get(i).setInCycle(true);
+                        if (queue.get(i).getCycleNumber() != 0) {
+                            curCycleNumber = queue.get(i).getCycleNumber();
+                            break;
+                        }
                     }
+
+                    for (int i = 0; i <= passedVertexIndex; i++) {
+                        queue.get(i).setCycleNumber(curCycleNumber);
+                    }
+
+                    lastCycleNumber++;
                     continue;
                 }
 
@@ -175,7 +199,8 @@ public class Transformer {
 
             vertices.sort(Comparator.comparingLong(o -> o.getKey().getPrintNumber()));
 
-            if (cycleVariants > 1 && currentVertex.getName().length() == 1) {
+            if (cycleVariants > 1 && currentVertex.getName().length() == 1
+                    && vertices.get(0).getKey().getCycleNumber() == vertices.get(vertices.size() - 1).getKey().getCycleNumber()) {
                 sb.append(lastCycleNumber);
 
                 vertices.get(1).getKey().setName(
@@ -193,7 +218,7 @@ public class Transformer {
                     if (vertices.get(0).getKey().getOrder() != 0) {
                         lastEdge = vertices.get(vertices.size() - 1).getValue();
                         queue.add(0, vertices.get(vertices.size() - 1).getKey());
-                    } else if (vertices.get(vertices.size() - 1).getKey().getOrder() != 0){
+                    } else if (vertices.get(vertices.size() - 1).getKey().getOrder() != 0) {
                         lastEdge = vertices.get(0).getValue();
                         queue.add(0, vertices.get(0).getKey());
                     } else {

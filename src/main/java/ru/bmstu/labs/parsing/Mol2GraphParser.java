@@ -11,12 +11,13 @@ import java.io.IOException;
 
 public class Mol2GraphParser implements Parser<Graph> {
 
+    private final String directoryName = "tests/";
     private final String fileName;
 
     private Graph graph;
 
     public Mol2GraphParser(String fileName) {
-        this.fileName = fileName + ".mol";
+        this.fileName = directoryName + fileName + ".mol";
     }
 
     @Override
